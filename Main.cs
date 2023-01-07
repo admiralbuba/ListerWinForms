@@ -1,32 +1,26 @@
+using Lister.Models;
 using Microsoft.AspNetCore.SignalR.Client;
 using RestSharp;
 using System.Text;
 
 namespace Lister
 {
-    public record Token(string Bearer);
-    public class User
-    {
-        public string Name { get; set; }
-    }
     public partial class Main : Form
     {
         HubConnection connection;
         string token;
-        StringBuilder sbp = new();
-        StringBuilder sbg = new();
-        List<User> userList = new()
+        List<string> users = new() { "qwe", "ewq" };
+        Dictionary<string, StringBuilder> chatsData = new()
         {
-            new User() { Name="qwe" },
-            new User() { Name = "ewq" }
+            { "qwe", new StringBuilder() },
+            { "ewq", new StringBuilder() }
         };
 
         public Main()
         {
             InitializeComponent();
 
-            chats.AutoGenerateColumns = true;
-            chats.DataSource = userList;
+            users.ForEach(x => { chats.Items.Add(x); });
 
             connection = new HubConnectionBuilder()
                 .WithUrl("http://localhost:5254/chat", options =>
@@ -34,53 +28,56 @@ namespace Lister
                     options.AccessTokenProvider = () => Task.FromResult(token);
                 }).Build();
 
-
-            connection.On<string>("Receive", message =>
+            connection.On<HubMessage>("Receive", message =>
             {
                 chatbox.BeginInvoke(() =>
                 {
-                    sbg.Clear().Append(chatbox.Text);
-                    chatbox.Text = string.Empty;
-                    chatbox.AppendText($"{username.Text}: {message}\n");
+                    chatbox.AppendText($"{username.Text}: {message.Text}\n");
                 });
             });
 
-            connection.On<string>("Notify", message =>
+            connection.On<HubMessage>("Notify", message =>
             {
                 chatbox.BeginInvoke(() =>
                 {
-                    chatbox.AppendText($"{message}\n");
+                    chatbox.AppendText($"{message.Text}\n");
                 });
             });
 
-            connection.On<string>("ReceiveGroup", message =>
+            connection.On<HubMessage>("ReceiveGroup", message =>
             {
                 chatbox.BeginInvoke(() =>
                 {
-                    sbp.Clear().Append(chatbox.Text);
-                    chatbox.Text = string.Empty;
-                    chatbox.AppendText($"{message}\n");
+                    chatbox.AppendText($"{message.FromName}: {message.Text}\n");
                 });
             });
         }
 
         private async void sendButton_Click(object sender, EventArgs e)
         {
+            var chatName = chats?.SelectedItem?.ToString();
+            string pstfix = "";
+
+            if (!users.Contains(chats?.SelectedItem?.ToString()))
+                pstfix = "Group";
+
+            var msg = new HubMessage() { ToName = chatName, Text = inputbox.Text };
             try
             {
-                await connection.InvokeAsync("Send", inputbox.Text, users?.SelectedItem?.ToString());
+                await connection.InvokeAsync($"Send{pstfix}", msg);
             }
             catch (Exception ex)
             {
                 chatbox.AppendText($"{ex.Message}\n");
             }
+
+            if (chatsData.ContainsKey(chatName)) chatsData[chatName]?.Append(inputbox.Text);
+            else chatsData.Add(chatName, new StringBuilder(inputbox.Text));
+
         }
 
         private async void login_Click(object sender, EventArgs e)
         {
-            userList.Add(new User() { Name = "test" });
-            chats.DataSource = null;
-            chats.DataSource = userList;
             var client = new RestClient("http://localhost:5254");
             var req = new RestRequest("/login/auth", Method.Post).AddQueryParameter("name", username.Text);
             var resp = await client.ExecuteAsync<Token>(req);
@@ -104,40 +101,16 @@ namespace Lister
         }
         private async void joinGroup_Click(object sender, EventArgs e)
         {
+            var msg = new HubMessage() { ToName = groupName.Text, IsGroup = true };
             try
             {
-                await connection.InvokeAsync("Enter", groupName.Text);
+                await connection.InvokeAsync("Enter", msg);
             }
             catch (Exception ex)
             {
                 chatbox.AppendText($"{ex.Message}\n");
             }
-        }
-
-        private async void sendToGroup_Click(object sender, EventArgs e)
-        {
-            try
-            {
-                await connection.InvokeAsync("SendGroup", inputbox.Text, groupName.Text);
-            }
-            catch (Exception ex)
-            {
-                chatbox.AppendText($"{ex.Message}\n");
-            }
-        }
-
-        private void privateChats_Click(object sender, EventArgs e)
-        {
-            sbg.Clear().Append(chatbox.Text);
-            chatbox.Text = string.Empty;
-            chatbox.AppendText(sbp.ToString());
-        }
-
-        private void Groups_Click(object sender, EventArgs e)
-        {
-            sbp.Clear().Append(chatbox.Text);
-            chatbox.Text = string.Empty;
-            chatbox.AppendText(sbg.ToString());
+            chats.Items.Add(groupName.Text);
         }
     }
 }
