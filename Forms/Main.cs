@@ -1,15 +1,18 @@
+using Lister.Configuration;
 using Lister.Models;
 using Microsoft.AspNetCore.SignalR.Client;
-using RestSharp;
 using System.Text;
+using Flurl;
+using Flurl.Http;
 
 namespace Lister
 {
     public partial class Main : Form
     {
+        AppSettings Config => Program.AppSettings;
         HubConnection connection;
         string token;
-        List<string> users = new() { "service", "qwe", "ewq" };
+        List<string> users = new() { "qwe", "ewq" };
         Dictionary<string, StringBuilder> chatsData = new()
         {
             { "service", new StringBuilder() },
@@ -24,10 +27,12 @@ namespace Lister
             users.ForEach(x => { chats.Items.Add(x); });
 
             connection = new HubConnectionBuilder()
-                .WithUrl("http://localhost:5254/chat", options =>
+                .WithUrl(Config.BaseUrl + Config.HubEndpoint, options =>
                 {
                     options.AccessTokenProvider = () => Task.FromResult(token);
-                }).Build();
+                })
+                .WithAutomaticReconnect()
+                .Build();
 
             connection.On<HubMessage>("Receive", message =>
             {
@@ -55,39 +60,33 @@ namespace Lister
                 });
                 chatsData[message.ToName]?.Append($"{message.ToName}: {message.Text}\n");
             });
+
+            connection.Reconnecting += error =>
+            {
+                statusbar.Items[0].Text = $"Connection: {connection.State}";
+                return Task.CompletedTask;
+            };
         }
 
-        private async void sendButton_Click(object sender, EventArgs e)
+        private async void sendButton_Click(object sender, EventArgs e) => Send();
+        private async void inputbox_KeyPress(object sender, KeyPressEventArgs e)
         {
-            var chatName = chats?.SelectedItem?.ToString();
-            string pstfix = "";
-
-            if (!users.Contains(chats?.SelectedItem?.ToString()))
-                pstfix = "Group";
-
-            var msg = new HubMessage() { ToName = chatName, Text = inputbox.Text };
-            try
-            {
-                await connection.InvokeAsync($"Send{pstfix}", msg);
-            }
-            catch (Exception ex)
-            {
-                chatbox.AppendText($"{ex.Message}\n");
-            }
-
-            if (!chatsData.ContainsKey(chatName)) chatsData.Add(chatName, new StringBuilder());
-
+            if (e.KeyChar == (char)Keys.Return) Send();
         }
 
         private async void login_Click(object sender, EventArgs e)
         {
-            var client = new RestClient("http://localhost:5254");
-            var req = new RestRequest("/login/auth", Method.Post).AddQueryParameter("name", username.Text);
-            var resp = await client.ExecuteAsync<Token>(req);
-            token = resp.Data?.Bearer;
+            var resp = await Config.BaseUrl
+                .AppendPathSegment(Config.AuthEndpoint)
+                .SetQueryParam("name", username.Text)
+                .PostAsync();
+
+            var data = await resp.GetJsonAsync<Token>();
+            token = data.Bearer;
             try
             {
                 await connection.StartAsync();
+                statusbar.Items[0].Text = $"Connection: {connection.State}";
                 chatbox.BeginInvoke(() =>
                 {
                     chatbox.AppendText($"Token received\n");
@@ -107,7 +106,12 @@ namespace Lister
         }
         private async void joinGroup_Click(object sender, EventArgs e)
         {
-            var msg = new HubMessage() { ToName = groupName.Text, IsGroup = true };
+            var form = new NewGroup();
+
+            if (form.ShowDialog(this) == DialogResult.Cancel)
+                return;
+
+            var msg = new HubMessage() { ToName = form.GroupName, IsGroup = true };
             try
             {
                 await connection.InvokeAsync("Enter", msg);
@@ -117,8 +121,8 @@ namespace Lister
                 chatbox.AppendText($"{ex.Message}\n");
             }
 
-            chats.Items.Add(groupName.Text);
-            if (!chatsData.ContainsKey(groupName.Text)) chatsData.Add(groupName.Text, new StringBuilder());
+            chats.Items.Add(form.GroupName);
+            if (!chatsData.ContainsKey(form.GroupName)) chatsData.Add(form.GroupName, new StringBuilder());
         }
 
         private void chats_SelectedIndexChanged(object sender, EventArgs e)
@@ -127,8 +131,36 @@ namespace Lister
             if (selected != null && chatsData.TryGetValue(selected, out StringBuilder sb))
             {
                 chatbox.Text = "";
-                chatbox.AppendText($"{sb.ToString()}\n");
+                chatbox.AppendText($"{sb}\n");
             }
+        }
+
+        private void saved_Click(object sender, EventArgs e)
+        {
+            var saved = chatsData["service"].ToString();
+            chatbox.Text = "";
+            chatbox.AppendText($"{saved}\n");
+        }
+
+        private async void Send()
+        {
+            var chatName = chats?.SelectedItem?.ToString();
+            string pstfix = "";
+
+            if (!users.Contains(chats?.SelectedItem?.ToString()))
+                pstfix = "Group";
+
+            var msg = new HubMessage() { ToName = chatName, Text = inputbox.Text };
+            try
+            {
+                await connection.InvokeAsync($"Send{pstfix}", msg);
+            }
+            catch (Exception ex)
+            {
+                chatbox.AppendText($"{ex.Message}\n");
+            }
+
+            if (!chatsData.ContainsKey(chatName)) chatsData.Add(chatName, new StringBuilder());
         }
     }
 }
