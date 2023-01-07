@@ -17,16 +17,15 @@ namespace Lister
             connection = new HubConnectionBuilder()
                 .WithUrl("http://localhost:5254/chat", options =>
                 {
-                    //options.Headers.Add("Authorization", token);
                     options.AccessTokenProvider = () => Task.FromResult(token);
                 }).Build();
 
 
-            connection.On<string, string>("Receive", (user, message) =>
+            connection.On<string, string>("Receive", (message, to) =>
             {
                 chatbox.BeginInvoke(() =>
                 {
-                    chatbox.AppendText($"{user}: {message}\n");
+                    chatbox.AppendText($"{username.Text}: {message}\n");
                 });
             });
         }
@@ -35,7 +34,7 @@ namespace Lister
         {
             try
             {
-                await connection.InvokeAsync("Send", username.Text, inputbox.Text);
+                await connection.InvokeAsync("Send", inputbox.Text, toUser.Text);
             }
             catch (Exception ex)
             {
@@ -54,8 +53,8 @@ namespace Lister
                 await connection.StartAsync();
                 chatbox.BeginInvoke(() =>
                 {
-                    chatbox.AppendText($"{username.Text}: token received\n");
-                    chatbox.AppendText($"Token: {token}\n");
+                    chatbox.AppendText($"Token received\n");
+                    chatbox.AppendText($"Bearer: {token}\n");
                 });
             }
             catch (Exception ex) 

@@ -33,6 +33,7 @@
             this.chatbox = new System.Windows.Forms.RichTextBox();
             this.username = new System.Windows.Forms.TextBox();
             this.login = new System.Windows.Forms.Button();
+            this.toUser = new System.Windows.Forms.TextBox();
             this.SuspendLayout();
             // 
             // inputbox
@@ -79,11 +80,19 @@
             this.login.Click += new System.EventHandler(this.login_Click);
             this.login.MouseClick += new System.Windows.Forms.MouseEventHandler(this.login_MouseClick);
             // 
+            // toUser
+            // 
+            this.toUser.Location = new System.Drawing.Point(343, 16);
+            this.toUser.Name = "toUser";
+            this.toUser.Size = new System.Drawing.Size(100, 23);
+            this.toUser.TabIndex = 6;
+            // 
             // Main
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(800, 450);
+            this.Controls.Add(this.toUser);
             this.Controls.Add(this.login);
             this.Controls.Add(this.username);
             this.Controls.Add(this.chatbox);
@@ -102,5 +111,6 @@
         private RichTextBox chatbox;
         private TextBox username;
         private Button login;
+        private TextBox toUser;
     }
 }
