@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.VisualBasic.ApplicationServices;
 using RestSharp;
@@ -16,9 +17,10 @@ namespace Lister
             connection = new HubConnectionBuilder()
                 .WithUrl("http://localhost:5254/chat", options =>
                 {
+                    //options.Headers.Add("Authorization", token);
                     options.AccessTokenProvider = () => Task.FromResult(token);
-                })
-                .Build();
+                }).Build();
+
 
             connection.On<string, string>("Receive", (user, message) =>
             {
@@ -43,22 +45,26 @@ namespace Lister
 
         private async void login_Click(object sender, EventArgs e)
         {
+            var client = new RestClient("http://localhost:5254");
+            var req = new RestRequest("/login/auth", Method.Post).AddQueryParameter("name", username.Text);
+            var resp = await client.ExecuteAsync<Token>(req);
+            token = resp.Data?.Bearer;
             try
             {
-                var client = new RestClient("http://localhost:5254");
-                var req = new RestRequest("/login/auth", Method.Post).AddQueryParameter("name", username.Text);
-                var resp = await client.ExecuteAsync<Token>(req);
-                token = resp.Data?.Bearer;
+                await connection.StartAsync();
                 chatbox.BeginInvoke(() =>
                 {
                     chatbox.AppendText($"{username.Text}: token received\n");
+                    chatbox.AppendText($"Token: {token}\n");
                 });
-                await connection.StartAsync();
             }
-            catch (Exception ex)
+            catch (Exception ex) 
             {
-
-            }
+                chatbox.BeginInvoke(() =>
+                {
+                    chatbox.AppendText($"{ex.Message}\n");
+                });
+                }
         }
 
         private void login_MouseClick(object sender, MouseEventArgs e)
