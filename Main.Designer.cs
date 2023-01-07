@@ -116,6 +116,7 @@
             this.chats.Name = "chats";
             this.chats.Size = new System.Drawing.Size(71, 124);
             this.chats.TabIndex = 10;
+            this.chats.SelectedIndexChanged += new System.EventHandler(this.chats_SelectedIndexChanged);
             // 
             // BottomToolStripPanel
             // 

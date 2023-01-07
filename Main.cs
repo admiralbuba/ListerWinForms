@@ -9,9 +9,10 @@ namespace Lister
     {
         HubConnection connection;
         string token;
-        List<string> users = new() { "qwe", "ewq" };
+        List<string> users = new() { "service", "qwe", "ewq" };
         Dictionary<string, StringBuilder> chatsData = new()
         {
+            { "service", new StringBuilder() },
             { "qwe", new StringBuilder() },
             { "ewq", new StringBuilder() }
         };
@@ -32,24 +33,27 @@ namespace Lister
             {
                 chatbox.BeginInvoke(() =>
                 {
-                    chatbox.AppendText($"{username.Text}: {message.Text}\n");
+                    chatbox.AppendText($"{message?.ToName}: {message.Text}\n");
                 });
+                chatsData[message?.ToName]?.Append($"{username.Text}: {message.Text}\n");
             });
 
-            connection.On<HubMessage>("Notify", message =>
+            connection.On<string>("Notify", message =>
             {
                 chatbox.BeginInvoke(() =>
                 {
-                    chatbox.AppendText($"{message.Text}\n");
+                    chatbox.AppendText($"{message}\n");
                 });
+                chatsData["service"]?.Append($"{message}\n");
             });
 
             connection.On<HubMessage>("ReceiveGroup", message =>
             {
                 chatbox.BeginInvoke(() =>
                 {
-                    chatbox.AppendText($"{message.FromName}: {message.Text}\n");
+                    chatbox.AppendText($"{message.ToName}: {message.Text}\n");
                 });
+                chatsData[message.ToName]?.Append($"{message.ToName}: {message.Text}\n");
             });
         }
 
@@ -71,8 +75,7 @@ namespace Lister
                 chatbox.AppendText($"{ex.Message}\n");
             }
 
-            if (chatsData.ContainsKey(chatName)) chatsData[chatName]?.Append(inputbox.Text);
-            else chatsData.Add(chatName, new StringBuilder(inputbox.Text));
+            if (!chatsData.ContainsKey(chatName)) chatsData.Add(chatName, new StringBuilder());
 
         }
 
@@ -98,6 +101,9 @@ namespace Lister
                     chatbox.AppendText($"{ex.Message}\n");
                 });
             }
+
+            chatsData["service"]?.Append($"Token received\n");
+            chatsData["service"]?.Append($"Bearer: {token}\n");
         }
         private async void joinGroup_Click(object sender, EventArgs e)
         {
@@ -110,7 +116,19 @@ namespace Lister
             {
                 chatbox.AppendText($"{ex.Message}\n");
             }
+
             chats.Items.Add(groupName.Text);
+            if (!chatsData.ContainsKey(groupName.Text)) chatsData.Add(groupName.Text, new StringBuilder());
+        }
+
+        private void chats_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            var selected = chats?.SelectedItem?.ToString();
+            if (selected != null && chatsData.TryGetValue(selected, out StringBuilder sb))
+            {
+                chatbox.Text = "";
+                chatbox.AppendText($"{sb.ToString()}\n");
+            }
         }
     }
 }
