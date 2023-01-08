@@ -163,8 +163,8 @@ namespace Lister
             }
 
             if (!chatsData.ContainsKey(chatName)) chatsData.Add(chatName, new StringBuilder());
-            else chatsData[chatName].Append(msg.Text + "\n");
-            chatbox.AppendText(msg.Text + "\n");
+            else chatsData[chatName].Append($"{msg.Text}\n");
+            chatbox.AppendText($"{msg.Text}\n");
         }
     }
 }
