@@ -1,14 +1,17 @@
 global using static Lister.Program;
 using Flurl;
 using Flurl.Http;
+using Lister.Extensions;
 using Lister.Models;
 using Microsoft.AspNetCore.SignalR.Client;
 using System.Text;
+using System.Windows.Forms;
 
 namespace Lister
 {
     public partial class Main : Form
     {
+        CancellationTokenSource cts;
         HubConnection connection;
         string token;
         List<string> users = new() { "qwe", "ewq", "Katy", "Dua" };
@@ -26,6 +29,9 @@ namespace Lister
         {
             InitializeComponent();
 
+            cts = new CancellationTokenSource();
+            var a = new List<string>();
+
             users.ForEach(x => { chats.Items.Add(x); });
 
             connection = new HubConnectionBuilder()
@@ -36,31 +42,24 @@ namespace Lister
                 .WithAutomaticReconnect()
                 .Build();
 
-            connection.On<HubMessage>("Receive", message =>
+            statusbar.Items[0].Text = $"Connection: {connection.State}";
+
+            connection.On<MessageDto>("Receive", message =>
             {
-                chatbox.BeginInvoke(() =>
-                {
-                    chatbox.AppendText($"{message?.ToName}: {message.Text}");
-                });
-                chatsData[message?.ToName]?.Append($"{username.Text}: {message.Text}");
+                chatbox.BeginAppendText($"{message.ToName}: {message.Text}\n");
+                chatsData[message.ToName].Append($"{message.ToName}: {message.Text}\n");
             });
 
             connection.On<string>("Notify", message =>
             {
-                chatbox.BeginInvoke(() =>
-                {
-                    chatbox.AppendText($"{message}\n");
-                });
+                chatbox.BeginAppendText($"{message}\n");
                 chatsData["service"]?.Append($"{message}\n");
             });
 
-            connection.On<HubMessage>("ReceiveGroup", message =>
+            connection.On<MessageDto>("ReceiveGroup", message =>
             {
-                chatbox.BeginInvoke(() =>
-                {
-                    chatbox.AppendText($"{message.ToName}: {message.Text}");
-                });
-                chatsData[message.ToName]?.Append($"{message.ToName}: {message.Text}");
+                chatbox.BeginAppendText($"{message.ToName}: {message.Text}\n");
+                chatsData[message.ToName].Append($"{message.ToName}: {message.Text}\n");
             });
 
             connection.Reconnecting += error =>
@@ -85,34 +84,32 @@ namespace Lister
 
             var data = await resp.GetJsonAsync<Token>();
             token = data.Bearer;
-            chatbox.BeginInvoke(() =>
-            {
-                chatbox.AppendText($"Token received\n");
-                chatbox.AppendText($"Bearer: {token}\n");
-            });
 
+            chatbox.BeginAppendText($"Token received\nBearer: {token}\n");
             chatsData["service"]?.Append($"Token received\n");
             chatsData["service"]?.Append($"Bearer: {token}\n");
         }
         private async void joinGroup_Click(object sender, EventArgs e)
         {
-            var form = new NewGroup();
+            string groupName;
 
-            if (form.ShowDialog(this) == DialogResult.Cancel)
-                return;
-
-            var msg = new HubMessage() { ToName = form.GroupName, IsGroup = true };
+            using (var form = new NewGroup())
+            {
+                if (form.ShowDialog(this) == DialogResult.Cancel)
+                    return;
+                var users = form.Users;
+                groupName = form.GroupName;
+            }
             try
             {
-                await connection.InvokeAsync("Enter", msg);
+                await connection.InvokeAsync("Enter", groupName);
+                chats.Items.Add(groupName);
+                if (!chatsData.ContainsKey(groupName)) chatsData.Add(groupName, new StringBuilder());
             }
             catch (Exception ex)
             {
                 chatbox.AppendText($"{ex.Message}");
             }
-
-            chats.Items.Add(form.GroupName);
-            if (!chatsData.ContainsKey(form.GroupName)) chatsData.Add(form.GroupName, new StringBuilder());
         }
 
         private void chats_SelectedIndexChanged(object sender, EventArgs e)
@@ -138,10 +135,9 @@ namespace Lister
             if (!users.Contains(selected))
                 pstfix = "Group";
 
-            var msg = new HubMessage() { ToName = selected, Text = inputbox.Text };
             try
             {
-                await connection.InvokeAsync($"Send{pstfix}", msg);
+                await connection.InvokeAsync($"Send{pstfix}", new MessageDto(selected, inputbox.Text));
             }
             catch (Exception ex)
             {
@@ -149,20 +145,38 @@ namespace Lister
             }
 
             if (!chatsData.ContainsKey(selected)) chatsData.Add(selected, new StringBuilder());
-            else chatsData[selected].Append($"{msg.Text}\n");
-            chatbox.AppendText($"{msg.Text}\n");
+            else chatsData[selected].Append($"{username.Text}: {inputbox.Text}\n");
+            chatbox.AppendText($"{username.Text}: {inputbox.Text}\n");
         }
 
         private async void connect_Click(object sender, EventArgs e)
         {
+            if (connection.State == HubConnectionState.Connecting)
+            {
+                cts.Cancel();
+                cts = new CancellationTokenSource();
+                return;
+            }
+
+            else if (connection.State == HubConnectionState.Connected
+                || connection.State == HubConnectionState.Reconnecting)
+            {
+                await connection.StopAsync();
+                connect.Image = Properties.Resources.off;
+                statusbar.Items[0].Text = $"Connection: {connection.State}";
+                return;
+            }
+
             try
             {
-                await connection.StartAsync();
+                statusbar.Items[0].Text = $"Connection: {HubConnectionState.Connecting}";
+                await connection.StartAsync(cts.Token);
+                connect.Image = Properties.Resources.green;
                 statusbar.Items[0].Text = $"Connection: {connection.State}";
-
             }
             catch (Exception ex)
             {
+                statusbar.Items[0].Text = $"Connection: {connection.State}";
                 chatbox.BeginInvoke(() =>
                 {
                     chatbox.AppendText($"{ex.Message}\n");

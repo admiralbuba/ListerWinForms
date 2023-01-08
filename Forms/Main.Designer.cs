@@ -196,7 +196,7 @@
             // 
             // connect
             // 
-            this.connect.BackgroundImage = global::Lister.Properties.Resources.wswitch;
+            this.connect.Image = global::Lister.Properties.Resources.off;
             this.connect.Location = new System.Drawing.Point(12, 253);
             this.connect.Name = "connect";
             this.connect.Size = new System.Drawing.Size(35, 35);
