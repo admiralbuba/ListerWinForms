@@ -43,13 +43,15 @@
             this.saved = new System.Windows.Forms.Button();
             this.allChatsLabel = new System.Windows.Forms.Label();
             this.statusbar = new System.Windows.Forms.StatusStrip();
-            this.coonection = new System.Windows.Forms.ToolStripStatusLabel();
+            this.connectionStatus = new System.Windows.Forms.ToolStripStatusLabel();
+            this.statusImage = new System.Windows.Forms.ToolStripStatusLabel();
+            this.connect = new System.Windows.Forms.Button();
             this.statusbar.SuspendLayout();
             this.SuspendLayout();
             // 
             // inputbox
             // 
-            this.inputbox.Location = new System.Drawing.Point(236, 213);
+            this.inputbox.Location = new System.Drawing.Point(236, 222);
             this.inputbox.Name = "inputbox";
             this.inputbox.Size = new System.Drawing.Size(220, 66);
             this.inputbox.TabIndex = 1;
@@ -58,9 +60,9 @@
             // 
             // send
             // 
-            this.send.Location = new System.Drawing.Point(184, 213);
+            this.send.Location = new System.Drawing.Point(186, 253);
             this.send.Name = "send";
-            this.send.Size = new System.Drawing.Size(37, 34);
+            this.send.Size = new System.Drawing.Size(35, 35);
             this.send.TabIndex = 2;
             this.send.Text = "→";
             this.send.UseVisualStyleBackColor = true;
@@ -69,7 +71,7 @@
             // chatbox
             // 
             this.chatbox.HideSelection = false;
-            this.chatbox.Location = new System.Drawing.Point(236, 33);
+            this.chatbox.Location = new System.Drawing.Point(236, 35);
             this.chatbox.Name = "chatbox";
             this.chatbox.ReadOnly = true;
             this.chatbox.Size = new System.Drawing.Size(220, 158);
@@ -174,17 +176,33 @@
             // statusbar
             // 
             this.statusbar.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.coonection});
+            this.connectionStatus,
+            this.statusImage});
             this.statusbar.Location = new System.Drawing.Point(0, 291);
             this.statusbar.Name = "statusbar";
             this.statusbar.Size = new System.Drawing.Size(474, 22);
             this.statusbar.TabIndex = 14;
             // 
-            // coonection
+            // connectionStatus
             // 
-            this.coonection.ActiveLinkColor = System.Drawing.Color.White;
-            this.coonection.Name = "coonection";
-            this.coonection.Size = new System.Drawing.Size(0, 17);
+            this.connectionStatus.ActiveLinkColor = System.Drawing.Color.White;
+            this.connectionStatus.Name = "connectionStatus";
+            this.connectionStatus.Size = new System.Drawing.Size(0, 17);
+            // 
+            // statusImage
+            // 
+            this.statusImage.Name = "statusImage";
+            this.statusImage.Size = new System.Drawing.Size(0, 17);
+            // 
+            // connect
+            // 
+            this.connect.BackgroundImage = global::Lister.Properties.Resources.wswitch;
+            this.connect.Location = new System.Drawing.Point(12, 253);
+            this.connect.Name = "connect";
+            this.connect.Size = new System.Drawing.Size(35, 35);
+            this.connect.TabIndex = 15;
+            this.connect.UseVisualStyleBackColor = true;
+            this.connect.Click += new System.EventHandler(this.connect_Click);
             // 
             // Main
             // 
@@ -192,6 +210,7 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.ActiveCaption;
             this.ClientSize = new System.Drawing.Size(474, 313);
+            this.Controls.Add(this.connect);
             this.Controls.Add(this.statusbar);
             this.Controls.Add(this.allChatsLabel);
             this.Controls.Add(this.saved);
@@ -228,6 +247,8 @@
         private Button saved;
         private Label allChatsLabel;
         private StatusStrip statusbar;
-        private ToolStripStatusLabel coonection;
+        private ToolStripStatusLabel connectionStatus;
+        private Button connect;
+        private ToolStripStatusLabel statusImage;
     }
 }

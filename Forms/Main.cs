@@ -4,7 +4,6 @@ using Flurl.Http;
 using Lister.Models;
 using Microsoft.AspNetCore.SignalR.Client;
 using System.Text;
-using System.Windows.Forms;
 
 namespace Lister
 {
@@ -21,6 +20,7 @@ namespace Lister
             { "Katy", new StringBuilder() },
             { "Dua", new StringBuilder() }
         };
+        string? selected => chats?.SelectedItem?.ToString();
 
         public Main()
         {
@@ -85,23 +85,11 @@ namespace Lister
 
             var data = await resp.GetJsonAsync<Token>();
             token = data.Bearer;
-            try
+            chatbox.BeginInvoke(() =>
             {
-                await connection.StartAsync();
-                statusbar.Items[0].Text = $"Connection: {connection.State}";
-                chatbox.BeginInvoke(() =>
-                {
-                    chatbox.AppendText($"Token received\n");
-                    chatbox.AppendText($"Bearer: {token}\n");
-                });
-            }
-            catch (Exception ex)
-            {
-                chatbox.BeginInvoke(() =>
-                {
-                    chatbox.AppendText($"{ex.Message}\n");
-                });
-            }
+                chatbox.AppendText($"Token received\n");
+                chatbox.AppendText($"Bearer: {token}\n");
+            });
 
             chatsData["service"]?.Append($"Token received\n");
             chatsData["service"]?.Append($"Bearer: {token}\n");
@@ -129,7 +117,6 @@ namespace Lister
 
         private void chats_SelectedIndexChanged(object sender, EventArgs e)
         {
-            var selected = chats?.SelectedItem?.ToString();
             if (selected != null && chatsData.TryGetValue(selected, out StringBuilder sb))
             {
                 chatbox.Text = "";
@@ -146,13 +133,12 @@ namespace Lister
 
         private async void Send()
         {
-            var chatName = chats?.SelectedItem?.ToString();
             string pstfix = "";
 
-            if (!users.Contains(chats?.SelectedItem?.ToString()))
+            if (!users.Contains(selected))
                 pstfix = "Group";
 
-            var msg = new HubMessage() { ToName = chatName, Text = inputbox.Text };
+            var msg = new HubMessage() { ToName = selected, Text = inputbox.Text };
             try
             {
                 await connection.InvokeAsync($"Send{pstfix}", msg);
@@ -162,9 +148,26 @@ namespace Lister
                 chatbox.AppendText($"{ex.Message}");
             }
 
-            if (!chatsData.ContainsKey(chatName)) chatsData.Add(chatName, new StringBuilder());
-            else chatsData[chatName].Append($"{msg.Text}\n");
+            if (!chatsData.ContainsKey(selected)) chatsData.Add(selected, new StringBuilder());
+            else chatsData[selected].Append($"{msg.Text}\n");
             chatbox.AppendText($"{msg.Text}\n");
+        }
+
+        private async void connect_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                await connection.StartAsync();
+                statusbar.Items[0].Text = $"Connection: {connection.State}";
+
+            }
+            catch (Exception ex)
+            {
+                chatbox.BeginInvoke(() =>
+                {
+                    chatbox.AppendText($"{ex.Message}\n");
+                });
+            }
         }
     }
 }
