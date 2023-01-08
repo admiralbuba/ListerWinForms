@@ -1,23 +1,25 @@
-using Lister.Configuration;
+global using static Lister.Program;
+using Flurl;
+using Flurl.Http;
 using Lister.Models;
 using Microsoft.AspNetCore.SignalR.Client;
 using System.Text;
-using Flurl;
-using Flurl.Http;
+using System.Windows.Forms;
 
 namespace Lister
 {
     public partial class Main : Form
     {
-        AppSettings Config => Program.AppSettings;
         HubConnection connection;
         string token;
-        List<string> users = new() { "qwe", "ewq" };
+        List<string> users = new() { "qwe", "ewq", "Katy", "Dua" };
         Dictionary<string, StringBuilder> chatsData = new()
         {
             { "service", new StringBuilder() },
             { "qwe", new StringBuilder() },
-            { "ewq", new StringBuilder() }
+            { "ewq", new StringBuilder() },
+            { "Katy", new StringBuilder() },
+            { "Dua", new StringBuilder() }
         };
 
         public Main()
@@ -27,7 +29,7 @@ namespace Lister
             users.ForEach(x => { chats.Items.Add(x); });
 
             connection = new HubConnectionBuilder()
-                .WithUrl(Config.BaseUrl + Config.HubEndpoint, options =>
+                .WithUrl(AppSettings.BaseUrl + AppSettings.HubEndpoint, options =>
                 {
                     options.AccessTokenProvider = () => Task.FromResult(token);
                 })
@@ -38,9 +40,9 @@ namespace Lister
             {
                 chatbox.BeginInvoke(() =>
                 {
-                    chatbox.AppendText($"{message?.ToName}: {message.Text}\n");
+                    chatbox.AppendText($"{message?.ToName}: {message.Text}");
                 });
-                chatsData[message?.ToName]?.Append($"{username.Text}: {message.Text}\n");
+                chatsData[message?.ToName]?.Append($"{username.Text}: {message.Text}");
             });
 
             connection.On<string>("Notify", message =>
@@ -56,9 +58,9 @@ namespace Lister
             {
                 chatbox.BeginInvoke(() =>
                 {
-                    chatbox.AppendText($"{message.ToName}: {message.Text}\n");
+                    chatbox.AppendText($"{message.ToName}: {message.Text}");
                 });
-                chatsData[message.ToName]?.Append($"{message.ToName}: {message.Text}\n");
+                chatsData[message.ToName]?.Append($"{message.ToName}: {message.Text}");
             });
 
             connection.Reconnecting += error =>
@@ -76,8 +78,8 @@ namespace Lister
 
         private async void login_Click(object sender, EventArgs e)
         {
-            var resp = await Config.BaseUrl
-                .AppendPathSegment(Config.AuthEndpoint)
+            var resp = await AppSettings.BaseUrl
+                .AppendPathSegment(AppSettings.AuthEndpoint)
                 .SetQueryParam("name", username.Text)
                 .PostAsync();
 
@@ -118,7 +120,7 @@ namespace Lister
             }
             catch (Exception ex)
             {
-                chatbox.AppendText($"{ex.Message}\n");
+                chatbox.AppendText($"{ex.Message}");
             }
 
             chats.Items.Add(form.GroupName);
@@ -131,7 +133,7 @@ namespace Lister
             if (selected != null && chatsData.TryGetValue(selected, out StringBuilder sb))
             {
                 chatbox.Text = "";
-                chatbox.AppendText($"{sb}\n");
+                chatbox.AppendText($"{sb}");
             }
         }
 
@@ -139,7 +141,7 @@ namespace Lister
         {
             var saved = chatsData["service"].ToString();
             chatbox.Text = "";
-            chatbox.AppendText($"{saved}\n");
+            chatbox.AppendText($"{saved}");
         }
 
         private async void Send()
@@ -157,10 +159,12 @@ namespace Lister
             }
             catch (Exception ex)
             {
-                chatbox.AppendText($"{ex.Message}\n");
+                chatbox.AppendText($"{ex.Message}");
             }
 
             if (!chatsData.ContainsKey(chatName)) chatsData.Add(chatName, new StringBuilder());
+            else chatsData[chatName].Append(msg.Text + "\n");
+            chatbox.AppendText(msg.Text + "\n");
         }
     }
 }

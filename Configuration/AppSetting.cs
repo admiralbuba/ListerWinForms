@@ -1,6 +1,6 @@
 ﻿namespace Lister.Configuration
 {
-    public class AppSettings
+    public class AppSetting
     {
         public static string SectionName = "AppSettings";
         public string BaseUrl { get; set; }
