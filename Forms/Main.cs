@@ -5,7 +5,6 @@ using Lister.Extensions;
 using Lister.Models;
 using Microsoft.AspNetCore.SignalR.Client;
 using System.Text;
-using System.Windows.Forms;
 
 namespace Lister
 {
